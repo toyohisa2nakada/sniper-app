@@ -1,25 +1,27 @@
 import { useEffect, useRef } from 'react';
 import { useGameLoop } from '../hooks/useGameLoop';
-import type { Enemy, Bullet } from '../models/game';
+import type { Enemy, Bullet, GameState } from '../models/game';
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from '../models/game';
 
-export default function GameCanvas() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+interface GameCanvasProps {
+    onGameStateChange: (gameState: GameState) => void;
+}
 
+export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
+    const gameState: GameState = { hitCount: 0, remainingBullets: 20 };
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const enemiesRef = useRef<Enemy[]>([
         {
             id: 'enemy-1',
             x: 0,
             y: 150,
-            vx: 0.2,
+            vx: 0.1,
             vy: 0,
             size: 10,
             color: 'green',
         }
     ]);
-
     const bulletsRef = useRef<Bullet[]>([]);
-
     const sniperPos = { x: SCREEN_WIDTH / 2, y: Math.floor(SCREEN_HEIGHT * 4 / 5) };
 
     useGameLoop((dt) => {
@@ -56,6 +58,8 @@ export default function GameCanvas() {
                 return distance < bullet.size + enemy.size;
             });
             if (hitEnemy) {
+                gameState.hitCount += 1;
+                onGameStateChange(gameState);
                 hitEnemy.color = 'red';
                 return false;
             }
@@ -108,9 +112,12 @@ export default function GameCanvas() {
                     speed: 0.3,
                     size: 3,
                 });
+                gameState.remainingBullets -= 1;
+                onGameStateChange(gameState);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
+        onGameStateChange(gameState);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [])
 
