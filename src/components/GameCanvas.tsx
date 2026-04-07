@@ -1,28 +1,35 @@
 import { useEffect, useRef } from 'react';
 import { useGameLoop } from '../hooks/useGameLoop';
-import type { Enemy, Bullet, GameState } from '../models/game';
-import { SCREEN_WIDTH, SCREEN_HEIGHT } from '../models/game';
+import type { GameState } from '../models/game';
+import { GAME_CONFIG } from '../models/game';
+import { getNextBullet } from '../extentions/agent';
 
 interface GameCanvasProps {
     onGameStateChange: (gameState: GameState) => void;
 }
 
 export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
-    const gameState: GameState = { hitCount: 0, remainingBullets: 20 };
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const enemiesRef = useRef<Enemy[]>([
-        {
+    const gameState = useRef<GameState>({
+        hitCount: 0,
+        remainingBullets: GAME_CONFIG.MAX_BULLETS,
+        player: {
+            x: GAME_CONFIG.PLAYER_INIT_X,
+            y: GAME_CONFIG.PLAYER_INIT_Y,
+            size: GAME_CONFIG.PLAYER_INIT_SIZE,
+            color: GAME_CONFIG.PLAYER_INIT_COLOR,
+        },
+        enemies: [{
             id: 'enemy-1',
-            x: 0,
-            y: 150,
-            vx: 0.1,
-            vy: 0,
-            size: 10,
-            color: 'green',
-        }
-    ]);
-    const bulletsRef = useRef<Bullet[]>([]);
-    const sniperPos = { x: SCREEN_WIDTH / 2, y: Math.floor(SCREEN_HEIGHT * 4 / 5) };
+            x: GAME_CONFIG.ENEMY_INIT_X,
+            y: GAME_CONFIG.ENEMY_INIT_Y,
+            vx: GAME_CONFIG.ENEMY_INIT_VX,
+            vy: GAME_CONFIG.ENEMY_INIT_VY,
+            size: GAME_CONFIG.ENEMY_INIT_SIZE,
+            color: GAME_CONFIG.ENEMY_INIT_COLOR,
+        }],
+        bullets: [],
+    });
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useGameLoop((dt) => {
         updateGame(dt);
@@ -30,11 +37,11 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
     });
 
     const updateGame = (dt: number) => {
-        enemiesRef.current.forEach(enemy => {
+        gameState.current.enemies.forEach(enemy => {
             enemy.x += enemy.vx * dt;
             enemy.y += enemy.vy * dt;
-            if (enemy.x > SCREEN_WIDTH - enemy.size) {
-                enemy.x = SCREEN_WIDTH - enemy.size;
+            if (enemy.x > GAME_CONFIG.SCREEN_WIDTH - enemy.size) {
+                enemy.x = GAME_CONFIG.SCREEN_WIDTH - enemy.size;
                 enemy.vx *= -1;
             }
             if (enemy.x < enemy.size) {
@@ -42,24 +49,24 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
                 enemy.vx *= -1;
             }
         });
-        bulletsRef.current.forEach(bullet => {
+        gameState.current.bullets.forEach(bullet => {
             bullet.x += Math.cos(bullet.direction) * bullet.speed * dt;
             bullet.y += Math.sin(bullet.direction) * bullet.speed * dt;
         });
 
-        bulletsRef.current = bulletsRef.current.filter(bullet => {
-            const isOut = bullet.y < 0 || bullet.y > SCREEN_HEIGHT || bullet.x < 0 || bullet.x > SCREEN_WIDTH;
+        gameState.current.bullets = gameState.current.bullets.filter(bullet => {
+            const isOut = bullet.y < 0 || bullet.y > GAME_CONFIG.SCREEN_HEIGHT || bullet.x < 0 || bullet.x > GAME_CONFIG.SCREEN_WIDTH;
             if (isOut) return false;
 
-            const hitEnemy = enemiesRef.current.find(enemy => {
+            const hitEnemy = gameState.current.enemies.find(enemy => {
                 const dx = bullet.x - enemy.x;
                 const dy = bullet.y - enemy.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 return distance < bullet.size + enemy.size;
             });
             if (hitEnemy) {
-                gameState.hitCount += 1;
-                onGameStateChange(gameState);
+                gameState.current.hitCount += 1;
+                onGameStateChange(gameState.current);
                 hitEnemy.color = 'red';
                 return false;
             }
@@ -70,12 +77,10 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
         if (!ctx || !canvas) return;
-
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        enemiesRef.current.forEach(enemy => {
+        gameState.current.enemies.forEach(enemy => {
             const { x, y, size, color } = enemy;
-
             ctx.beginPath();
             ctx.arc(x, y, size, 0, Math.PI * 2);
             ctx.fillStyle = color;
@@ -83,18 +88,17 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
             ctx.closePath();
         });
 
-        bulletsRef.current.forEach(bullet => {
-            const { x, y, size } = bullet;
-
+        gameState.current.bullets.forEach(bullet => {
+            const { x, y, size, color } = bullet;
             ctx.beginPath();
             ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.fillStyle = '#3b82f6';
+            ctx.fillStyle = color;
             ctx.fill();
             ctx.closePath();
         });
 
         ctx.beginPath();
-        ctx.arc(sniperPos.x, sniperPos.y, 10, 0, Math.PI * 2);
+        ctx.arc(gameState.current.player.x, gameState.current.player.y, 10, 0, Math.PI * 2);
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -104,28 +108,21 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space') {
-                bulletsRef.current.push({
-                    id: Math.random().toString(),
-                    x: sniperPos.x,
-                    y: sniperPos.y,
-                    direction: -Math.PI / 2,
-                    speed: 0.3,
-                    size: 3,
-                });
-                gameState.remainingBullets -= 1;
-                onGameStateChange(gameState);
+                gameState.current.bullets.push(getNextBullet(gameState.current));
+                gameState.current.remainingBullets -= 1;
+                onGameStateChange(gameState.current);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        onGameStateChange(gameState);
+        onGameStateChange(gameState.current);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [])
 
     return (
         <canvas
             ref={canvasRef}
-            width={SCREEN_WIDTH}
-            height={SCREEN_HEIGHT}
+            width={GAME_CONFIG.SCREEN_WIDTH}
+            height={GAME_CONFIG.SCREEN_HEIGHT}
             className="bg-black w-full max-w-[360px] aspect-[9/16] shadow-2xl touch-none border border-slate-700"
         />
     );
