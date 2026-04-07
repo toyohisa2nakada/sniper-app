@@ -108,9 +108,12 @@ export default function GameCanvas({ onGameStateChange }: GameCanvasProps) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.code === 'Space') {
-                gameState.current.bullets.push(getNextBullet(gameState.current));
-                gameState.current.remainingBullets -= 1;
-                onGameStateChange(gameState.current);
+                const bullet = getNextBullet(gameState.current);
+                if (bullet) {
+                    gameState.current.bullets.push(bullet);
+                    gameState.current.remainingBullets -= 1;
+                    onGameStateChange(gameState.current);
+                }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
