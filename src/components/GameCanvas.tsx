@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption, ComboboxButton } from '@headlessui/react';
 import { useGameLoop } from '../hooks/useGameLoop';
 import type { GameState } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
@@ -30,7 +31,9 @@ export default function GameCanvas() {
     const remainingBulletsRef = useRef<HTMLSpanElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
-    const [datasetName, setDatasetName] = useState<string | null>(null)
+
+    const [datasetList, setDatasetList] = useState<{ id: number, name: string }[]>([]);
+    const [dataset, setDataset] = useState<{ id: number, name: string } | null>(null);
 
     useGameLoop((dt) => {
         updateGame(dt);
@@ -45,14 +48,36 @@ export default function GameCanvas() {
         remainingBulletsRef.current.textContent = state.remainingBullets.toString();
         return;
     }
+
     function handleAgentTypeChange(event: React.ChangeEvent<HTMLSelectElement>) {
         setAgentType(event.target.value as AGENT_TYPES);
     }
-    function handleDatasetNameChange(event: React.ChangeEvent<HTMLSelectElement>) {
-        setDatasetName(event.target.value);
+    function handleCreateTrainingDataChange(checked: boolean) {
+        console.log(checked);
+        if (checked === false) {
+            // test
+            const newList = [...datasetList, { id: datasetList.length, name: "test" + datasetList.length }];
+            console.log(newList)
+            setDatasetList(newList);
+            setDataset(newList[newList.length - 1]);
+        }
     }
     function handleStartLearning() {
-        console.log(datasetName);
+        console.log(dataset);
+    }
+    function handleDeleteDataset(e: React.MouseEvent, id: number) {
+        e.stopPropagation();
+        const currentIndex = datasetList.findIndex((item) => item.id === id);
+        const newList = datasetList.filter(dataset => dataset.id !== id);
+        setDatasetList(newList);
+        if (dataset?.id === id) {
+            if (newList.length === 0) {
+                setDataset(null);
+            } else {
+                const newIndex = currentIndex < newList.length ? currentIndex : newList.length - 1;
+                setDataset(newList[newIndex]);
+            }
+        }
     }
 
     const updateGame = (dt: number) => {
@@ -74,7 +99,8 @@ export default function GameCanvas() {
         });
 
         gameState.current.bullets = gameState.current.bullets.filter(bullet => {
-            const isOut = bullet.y < 0 || bullet.y > GAME_CONFIG.SCREEN_HEIGHT || bullet.x < 0 || bullet.x > GAME_CONFIG.SCREEN_WIDTH;
+            const isOut = bullet.y < 0 || bullet.y > GAME_CONFIG.SCREEN_HEIGHT ||
+                bullet.x < 0 || bullet.x > GAME_CONFIG.SCREEN_WIDTH;
             if (isOut) return false;
 
             const hitEnemy = gameState.current.enemies.find(enemy => {
@@ -172,20 +198,56 @@ export default function GameCanvas() {
                 </div>
                 <div className="flex flex-row gap-1 p-1 border bg-inherit">
                     <div className="flex items-center gap-0 bg-inherit">
-                        <input id="create-trainingData" type="checkbox" className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600" />
+                        <input
+                            id="create-trainingData"
+                            type="checkbox"
+                            className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            onChange={(e) => handleCreateTrainingDataChange(e.target.checked)}
+                        />
                         <label htmlFor="create-trainingData">学習データ作成</label>
                     </div>
-                    <div className="flex items-center gap-0 bg-inherit">
-                        <select
-                            id="dataset-select"
-                            name="dataset-name"
-                            className="bg-inherit"
-                            value={datasetName ?? ""}
-                            onChange={handleDatasetNameChange}
-                        >
-                            <option value="null">AIの学習データ</option>
-                            <option value="1">AIの学習データ</option>
-                        </select>
+                    <div className="flex items-center gap-2 bg-inherit">
+                        <Combobox value={dataset} onChange={setDataset}>
+                            <div className="relative">
+                                <div className="relative flex items-center">
+                                    <ComboboxInput
+                                        displayValue={(d: typeof dataset) => d?.name ?? ''}
+                                        onChange={(e) => {
+                                            const newName = e.target.value;
+                                            if (dataset) {
+                                                const updated = { ...dataset, name: newName };
+                                                setDataset(updated);
+                                                setDatasetList(prev => prev.map(item => item.id === dataset.id ? updated : item));
+                                            }
+                                        }}
+                                        className="bg-slate-700 text-white px-2 py-1 pr-8 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Select dataset"
+                                    />
+                                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                                        <span className="text-gray-400 text-xs">▼</span>
+                                    </ComboboxButton>
+                                </div>
+                                <ComboboxOptions className="absolute right-0 w-max min-w-full mt-1 max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-black z-50">
+                                    {datasetList.map((data) => (
+                                        <ComboboxOption key={data.id} value={data}
+                                            className={({ focus }) => `relative cursor-default select-none py-2 pl-3 pr-9 flex justify-between ${focus ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
+                                        >
+                                            <span>{data.name}</span>
+                                            <button
+                                                onMouseDown={(e) => {
+                                                    e.stopPropagation();
+                                                }}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleDeleteDataset(e, data.id);
+                                                }}
+                                                className="text-gray-200 hover:text-red-700 z-10 px-2 py-1 rounded"
+                                            >削除</button>
+                                        </ComboboxOption>
+                                    ))}
+                                </ComboboxOptions>
+                            </div>
+                        </Combobox>
                         <button onClick={handleStartLearning}>学習</button>
                     </div>
                 </div>
