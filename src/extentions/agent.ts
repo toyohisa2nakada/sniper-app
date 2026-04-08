@@ -1,7 +1,20 @@
 import type { GameState, Bullet } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
 
-const AGENT_TYPE = "linear";
+export type AGENT_TYPES = "linear" | "manual" | "random";
+
+function getNextManualBullet(state: GameState, mouseEvent: MouseEvent): Bullet | null {
+  const direction = Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
+  return {
+    id: Math.random().toString(),
+    x: state.player.x,
+    y: state.player.y,
+    direction,
+    speed: GAME_CONFIG.BULLET_SPEED,
+    size: GAME_CONFIG.BULLET_SIZE,
+    color: GAME_CONFIG.BULLET_COLOR,
+  };
+}
 
 function getNextRandomBullet(state: GameState): Bullet | null {
   return {
@@ -47,11 +60,13 @@ function getLinearPredictiveBullet(state: GameState): Bullet | null {
   };
 }
 
-export const getNextBullet = (state: GameState): Bullet | null => {
-  if (AGENT_TYPE === "linear") {
+export const getNextBullet = (agentType:AGENT_TYPES, state: GameState, mouseEvent: MouseEvent | null): Bullet | null => {
+  if (agentType === "linear") {
     return getLinearPredictiveBullet(state);
-  } else if (AGENT_TYPE === "random") {
+  } else if (agentType === "random") {
     return getNextRandomBullet(state);
+  } else if (agentType === "manual" && mouseEvent !== null) {
+    return getNextManualBullet(state, mouseEvent);
   }
   return null;
 }
