@@ -155,7 +155,7 @@ export default function GameCanvas() {
 
     return (
         <main className="flex flex-col items-center justify-center p-4">
-            <header className="h-16 bg-slate-800 text-white flex items-center justify-between px-6 border-b border-slate-700 gap-4 font-mono text-sm">
+            <header className="h-12 bg-slate-800 text-white flex items-center justify-between px-6 border-b border-slate-700 gap-4 font-mono text-xs">
                 <div className="flex items-center gap-0 bg-inherit">
                     <label htmlFor="agent-select">Player</label>
                     <select
@@ -170,22 +170,24 @@ export default function GameCanvas() {
                         <option value="random">random</option>
                     </select>
                 </div>
-                <div className="flex items-center gap-0 bg-inherit">
-                    <input id="create-trainingData" type="checkbox" className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600" />
-                    <label htmlFor="create-trainingData">学習データ作成</label>
-                </div>
-                <div className="flex items-center gap-0 bg-inherit">
-                    <select
-                        id="dataset-select"
-                        name="dataset-name"
-                        className="bg-inherit"
-                        value={datasetName ?? ""}
-                        onChange={handleDatasetNameChange}
-                    >
-                        <option value="null">AIの学習データ</option>
-                        <option value="1">AIの学習データ</option>
-                    </select>
-                    <button onClick={handleStartLearning}>学習</button>
+                <div className="flex flex-row gap-1 p-1 border bg-inherit">
+                    <div className="flex items-center gap-0 bg-inherit">
+                        <input id="create-trainingData" type="checkbox" className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600" />
+                        <label htmlFor="create-trainingData">学習データ作成</label>
+                    </div>
+                    <div className="flex items-center gap-0 bg-inherit">
+                        <select
+                            id="dataset-select"
+                            name="dataset-name"
+                            className="bg-inherit"
+                            value={datasetName ?? ""}
+                            onChange={handleDatasetNameChange}
+                        >
+                            <option value="null">AIの学習データ</option>
+                            <option value="1">AIの学習データ</option>
+                        </select>
+                        <button onClick={handleStartLearning}>学習</button>
+                    </div>
                 </div>
                 <div>HITS: <span ref={hitCountRef} className="text-yellow-400">0</span></div>
                 <div>BULLETS: <span ref={remainingBulletsRef} className="text-red-400">10</span></div>
