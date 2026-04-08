@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption, ComboboxButton } from '@headlessui/react';
 import { useGameLoop } from '../hooks/useGameLoop';
-import type { GameState } from '../models/game';
+import type { GameState, Bullet } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
-import { getNextBullet, type AGENT_TYPES } from '../extentions/agent';
-
+import { getNextBullet, AGENT_TYPES_ARRAY, type AGENT_TYPES } from '../extentions/agent';
 
 export default function GameCanvas() {
     const gameState = useRef<GameState>({
@@ -30,10 +29,15 @@ export default function GameCanvas() {
     const hitCountRef = useRef<HTMLSpanElement>(null);
     const remainingBulletsRef = useRef<HTMLSpanElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const collectingTrainingDataRef = useRef<boolean>(false);
+    const trainingDataRef = useRef<Bullet[]>([]);
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
-
-    const [datasetList, setDatasetList] = useState<{ id: number, name: string }[]>([]);
-    const [dataset, setDataset] = useState<{ id: number, name: string } | null>(null);
+    const [datasetList, setDatasetList] = useState<{ id: number, name: string }[]>(() =>
+        Object.keys(localStorage).filter(key => key.startsWith("dataset-"))
+            .map(key => JSON.parse(localStorage.getItem(key)!))
+    );
+    console.log(datasetList)
+    const [dataset, setDataset] = useState<{ id: number, name: string } | null>(datasetList.length === 0 ? null : datasetList[0]);
 
     useGameLoop((dt) => {
         updateGame(dt);
@@ -53,14 +57,16 @@ export default function GameCanvas() {
         setAgentType(event.target.value as AGENT_TYPES);
     }
     function handleCreateTrainingDataChange(checked: boolean) {
-        console.log(checked);
         if (checked === false) {
-            // test
-            const newList = [...datasetList, { id: datasetList.length, name: "test" + datasetList.length }];
-            console.log(newList)
+            const dataset = { id: datasetList.length, name: "test" + datasetList.length };
+            const newList = [...datasetList, dataset];
             setDatasetList(newList);
             setDataset(newList[newList.length - 1]);
+
+            localStorage.setItem(`dataset-${dataset.name}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
         }
+        trainingDataRef.current = [];
+        collectingTrainingDataRef.current = checked;
     }
     function handleStartLearning() {
         console.log(dataset);
@@ -78,6 +84,11 @@ export default function GameCanvas() {
                 setDataset(newList[newIndex]);
             }
         }
+    }
+
+    const addTrainingData = (bullet: Bullet) => {
+        trainingDataRef.current.push(bullet)
+        return;
     }
 
     const updateGame = (dt: number) => {
@@ -113,6 +124,9 @@ export default function GameCanvas() {
                 gameState.current.hitCount += 1;
                 onGameStateChange(gameState.current);
                 hitEnemy.color = 'red';
+                if (collectingTrainingDataRef.current) {
+                    addTrainingData(bullet);
+                }
                 return false;
             }
             return true;
@@ -152,8 +166,13 @@ export default function GameCanvas() {
 
     useEffect(() => {
         const emit = (e: MouseEvent | null) => {
-            const bullet = getNextBullet(agentType, gameState.current, e);
+            const targetEnemy = gameState.current.enemies[0];
+            if (targetEnemy === undefined) {
+                return;
+            }
+            const bullet = getNextBullet(agentType, gameState.current, targetEnemy, e);
             if (bullet) {
+                bullet.id = gameState.current.remainingBullets;
                 gameState.current.bullets.push(bullet);
                 gameState.current.remainingBullets -= 1;
                 onGameStateChange(gameState.current);
@@ -191,9 +210,7 @@ export default function GameCanvas() {
                         value={agentType}
                         onChange={handleAgentTypeChange}
                     >
-                        <option value="manual">manual</option>
-                        <option value="linear">linear</option>
-                        <option value="random">random</option>
+                        {AGENT_TYPES_ARRAY.map((t: string, i: number) => (<option value={t} key={i}>{t}</option>))}
                     </select>
                 </div>
                 <div className="flex flex-row gap-1 p-1 border bg-inherit">

@@ -12,6 +12,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@tailwindcss/vite": "^4.2.2",
+    "@tensorflow/tfjs": "^4.22.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2"

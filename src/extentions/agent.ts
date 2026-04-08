@@ -1,37 +1,17 @@
-import type { GameState, Bullet } from '../models/game';
+import type { GameState, Bullet, Enemy } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
 
-export type AGENT_TYPES = "linear" | "manual" | "random";
+export const AGENT_TYPES_ARRAY = ["manual", "random", "linear", "ai"];
+export type AGENT_TYPES = (typeof AGENT_TYPES_ARRAY)[number];
 
-function getNextManualBullet(state: GameState, mouseEvent: MouseEvent): Bullet | null {
-  const direction = Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
-  return {
-    id: Math.random().toString(),
-    x: state.player.x,
-    y: state.player.y,
-    direction,
-    speed: GAME_CONFIG.BULLET_SPEED,
-    size: GAME_CONFIG.BULLET_SIZE,
-    color: GAME_CONFIG.BULLET_COLOR,
-  };
+function getNextManualBullet(state: GameState, mouseEvent: MouseEvent): number {
+  return Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
 }
 
-function getNextRandomBullet(state: GameState): Bullet | null {
-  return {
-    id: Math.random().toString(),
-    x: state.player.x,
-    y: state.player.y,
-    direction: -Math.PI / 2 + (Math.random() * 2 - 1) * Math.PI / 6,
-    speed: GAME_CONFIG.BULLET_SPEED,
-    size: GAME_CONFIG.BULLET_SIZE,
-    color: GAME_CONFIG.BULLET_COLOR,
-  };
+function getNextRandomBullet(): number {
+  return -Math.PI / 2 + (Math.random() * 2 - 1) * Math.PI / 6;
 }
-function getLinearPredictiveBullet(state: GameState): Bullet | null {
-  if (state.enemies.length === 0) {
-    return null;
-  }
-  const enemy = state.enemies[0];
+function getLinearPredictiveBullet(state: GameState, enemy: Enemy): number {
   const v_bt = GAME_CONFIG.BULLET_SPEED;
   const v_em = Math.sqrt(Math.pow(enemy.vx, 2) + Math.pow(enemy.vy, 2));
   const seta2 = Math.atan2(enemy.vy, enemy.vx);
@@ -49,24 +29,29 @@ function getLinearPredictiveBullet(state: GameState): Bullet | null {
 
   const seta1 = Math.atan2(dy1, dx1);
 
+  return seta1;
+}
+
+export const getNextBullet = (agentType: AGENT_TYPES, state: GameState, enemy: Enemy, mouseEvent: MouseEvent | null): Bullet | null => {
+  let direction = null;
+  if (agentType === "linear") {
+    direction = getLinearPredictiveBullet(state, enemy);
+  } else if (agentType === "random") {
+    direction = getNextRandomBullet();
+  } else if (agentType === "manual" && mouseEvent !== null) {
+    direction = getNextManualBullet(state, mouseEvent);
+  }
+  if (direction === null) {
+    return null;
+  }
   return {
-    id: Math.random().toString(),
+    id: 0,
     x: state.player.x,
     y: state.player.y,
-    direction: seta1,
+    direction,
     speed: GAME_CONFIG.BULLET_SPEED,
     size: GAME_CONFIG.BULLET_SIZE,
     color: GAME_CONFIG.BULLET_COLOR,
+    enemySnapshot: { ...enemy },
   };
-}
-
-export const getNextBullet = (agentType:AGENT_TYPES, state: GameState, mouseEvent: MouseEvent | null): Bullet | null => {
-  if (agentType === "linear") {
-    return getLinearPredictiveBullet(state);
-  } else if (agentType === "random") {
-    return getNextRandomBullet(state);
-  } else if (agentType === "manual" && mouseEvent !== null) {
-    return getNextManualBullet(state, mouseEvent);
-  }
-  return null;
 }

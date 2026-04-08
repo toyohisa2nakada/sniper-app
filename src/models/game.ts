@@ -3,7 +3,7 @@ export const GAME_CONFIG = {
     SCREEN_WIDTH: 360,
     SCREEN_HEIGHT: 640,
     MAX_BULLETS: 200,
-    
+
     PLAYER_INIT_X: 180,
     PLAYER_INIT_Y: 512,
     PLAYER_INIT_SIZE: 10,
@@ -37,13 +37,14 @@ export type Enemy = {
     color: string;
 };
 export type Bullet = {
-    id: string;
+    id: number;
     x: number;
     y: number;
     direction: number;
     speed: number;
     size: number;
     color: string;
+    enemySnapshot: Enemy;
 };
 export type GameState = {
     hitCount: number;
