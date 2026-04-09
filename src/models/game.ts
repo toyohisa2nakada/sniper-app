@@ -9,7 +9,7 @@ export const GAME_CONFIG = {
     PLAYER_INIT_SIZE: 10,
     PLAYER_INIT_COLOR: 'gray',
 
-    BULLET_SPEED: 0.3,
+    BULLET_SPEED: 0.6,
     BULLET_SIZE: 3,
     BULLET_COLOR: 'red',
 
