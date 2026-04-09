@@ -15,7 +15,7 @@ export const GAME_CONFIG = {
 
     ENEMY_INIT_X: 0,
     ENEMY_INIT_Y: 150,
-    ENEMY_INIT_VX: 0.1,
+    ENEMY_INIT_VX: 0.5,
     ENEMY_INIT_VY: 0,
     ENEMY_INIT_SIZE: 10,
     ENEMY_INIT_COLOR: 'green',

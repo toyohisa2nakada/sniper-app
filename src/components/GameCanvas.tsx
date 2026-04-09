@@ -3,7 +3,9 @@ import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption, ComboboxButto
 import { useGameLoop } from '../hooks/useGameLoop';
 import type { GameState, Bullet } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
-import { getNextBullet, AGENT_TYPES_ARRAY, type AGENT_TYPES } from '../extentions/agent';
+import { getNextBullet, modelFit, AGENT_TYPES_ARRAY, type AGENT_TYPES } from '../extentions/agent';
+
+const DATASET_LOCALSTORAGE_HEADER = 'dataset-';
 
 export default function GameCanvas() {
     const gameState = useRef<GameState>({
@@ -32,12 +34,15 @@ export default function GameCanvas() {
     const collectingTrainingDataRef = useRef<boolean>(false);
     const trainingDataRef = useRef<Bullet[]>([]);
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
-    const [datasetList, setDatasetList] = useState<{ id: number, name: string }[]>(() =>
-        Object.keys(localStorage).filter(key => key.startsWith("dataset-"))
-            .map(key => JSON.parse(localStorage.getItem(key)!))
+    const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() =>
+        Object.keys(localStorage).filter(key => key.startsWith(DATASET_LOCALSTORAGE_HEADER))
+            .map((key, i) => {
+                const dataset = JSON.parse(localStorage.getItem(key)!);
+                return ({ id: i, name: dataset.name })
+            })
     );
-    console.log(datasetList)
-    const [dataset, setDataset] = useState<{ id: number, name: string } | null>(datasetList.length === 0 ? null : datasetList[0]);
+    // console.log(datasetItemList)
+    const [datasetItem, setDatasetItem] = useState<{ id: number, name: string } | null>(datasetItemList.length === 0 ? null : datasetItemList[0]);
 
     useGameLoop((dt) => {
         updateGame(dt);
@@ -58,10 +63,10 @@ export default function GameCanvas() {
     }
     function handleCreateTrainingDataChange(checked: boolean) {
         if (checked === false) {
-            const dataset = { id: datasetList.length, name: "test" + datasetList.length };
-            const newList = [...datasetList, dataset];
-            setDatasetList(newList);
-            setDataset(newList[newList.length - 1]);
+            const dataset = { id: (datasetItemList.at(-1)?.id ?? -1) + 1, name: "data " + datasetItemList.length };
+            const newList = [...datasetItemList, dataset];
+            setDatasetItemList(newList);
+            setDatasetItem(newList[newList.length - 1]);
 
             localStorage.setItem(`dataset-${dataset.name}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
         }
@@ -69,19 +74,23 @@ export default function GameCanvas() {
         collectingTrainingDataRef.current = checked;
     }
     function handleStartLearning() {
-        console.log(dataset);
+        console.log(datasetItem);
+        const dataset = JSON.parse(localStorage.getItem(DATASET_LOCALSTORAGE_HEADER + (datasetItem?.name)) ?? "{}");
+        if (Object.keys(dataset).length > 0) {
+            modelFit(dataset.data);
+        }
     }
     function handleDeleteDataset(e: React.MouseEvent, id: number) {
         e.stopPropagation();
-        const currentIndex = datasetList.findIndex((item) => item.id === id);
-        const newList = datasetList.filter(dataset => dataset.id !== id);
-        setDatasetList(newList);
-        if (dataset?.id === id) {
+        const currentIndex = datasetItemList.findIndex((item) => item.id === id);
+        const newList = datasetItemList.filter(datasetItem => datasetItem.id !== id);
+        setDatasetItemList(newList);
+        if (datasetItem?.id === id) {
             if (newList.length === 0) {
-                setDataset(null);
+                setDatasetItem(null);
             } else {
                 const newIndex = currentIndex < newList.length ? currentIndex : newList.length - 1;
-                setDataset(newList[newIndex]);
+                setDatasetItem(newList[newIndex]);
             }
         }
     }
@@ -224,17 +233,17 @@ export default function GameCanvas() {
                         <label htmlFor="create-trainingData">学習データ作成</label>
                     </div>
                     <div className="flex items-center gap-2 bg-inherit">
-                        <Combobox value={dataset} onChange={setDataset}>
+                        <Combobox value={datasetItem} onChange={setDatasetItem}>
                             <div className="relative">
                                 <div className="relative flex items-center">
                                     <ComboboxInput
-                                        displayValue={(d: typeof dataset) => d?.name ?? ''}
+                                        displayValue={(d: typeof datasetItem) => d?.name ?? ''}
                                         onChange={(e) => {
                                             const newName = e.target.value;
-                                            if (dataset) {
-                                                const updated = { ...dataset, name: newName };
-                                                setDataset(updated);
-                                                setDatasetList(prev => prev.map(item => item.id === dataset.id ? updated : item));
+                                            if (datasetItem) {
+                                                const updated = { ...datasetItem, name: newName };
+                                                setDatasetItem(updated);
+                                                setDatasetItemList(prev => prev.map(item => item.id === datasetItem.id ? updated : item));
                                             }
                                         }}
                                         className="bg-slate-700 text-white px-2 py-1 pr-8 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
@@ -245,7 +254,7 @@ export default function GameCanvas() {
                                     </ComboboxButton>
                                 </div>
                                 <ComboboxOptions className="absolute right-0 w-max min-w-full mt-1 max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-black z-50">
-                                    {datasetList.map((data) => (
+                                    {datasetItemList.map((data) => (
                                         <ComboboxOption key={data.id} value={data}
                                             className={({ focus }) => `relative cursor-default select-none py-2 pl-3 pr-9 flex justify-between ${focus ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
                                         >

@@ -1,17 +1,71 @@
+import * as tf from '@tensorflow/tfjs';
 import type { GameState, Bullet, Enemy } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
 
 export const AGENT_TYPES_ARRAY = ["manual", "random", "linear", "ai"];
 export type AGENT_TYPES = (typeof AGENT_TYPES_ARRAY)[number];
 
-function getNextManualBullet(state: GameState, mouseEvent: MouseEvent): number {
-  return Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
+let g_model: tf.Sequential | null = null;
+
+export function modelPredict(enemy: Enemy): number {
+  if (g_model === null) {
+    return 0;
+  }
+  const xs = tf.tensor2d([[
+    enemy.x / GAME_CONFIG.SCREEN_WIDTH,
+    enemy.y / GAME_CONFIG.SCREEN_HEIGHT,
+    enemy.vx,
+    enemy.vy,
+  ]]);
+  return (g_model.predict(xs) as tf.Tensor).dataSync()[0] * Math.PI;
 }
 
-function getNextRandomBullet(): number {
+export async function modelFit(trainingData: Bullet[]) {
+  console.log(trainingData)
+  const model = tf.sequential();
+  model.add(tf.layers.dense({
+    inputShape: [4],
+    units: 8,
+    activation: 'tanh'
+  }));
+  model.add(tf.layers.dense({
+    units: 8,
+    activation: 'tanh'
+  }));
+  model.add(tf.layers.dense({
+    units: 1
+  }));
+  model.compile({
+    optimizer: tf.train.adam(0.005),
+    loss: tf.losses.meanSquaredError,
+  })
+
+  const xs = tf.tensor2d(trainingData.map(data => ([
+    data.enemySnapshot.x / GAME_CONFIG.SCREEN_WIDTH,
+    data.enemySnapshot.y / GAME_CONFIG.SCREEN_HEIGHT,
+    data.enemySnapshot.vx,
+    data.enemySnapshot.vy,
+  ])));
+  const ys = tf.tensor2d(trainingData.map(data => ([
+    data.direction / Math.PI
+  ])))
+  await model.fit(xs, ys, {
+    epochs: 1500,
+    callbacks: {
+      onEpochEnd: (epoch, logs) => console.log(`Epoch ${epoch}: Loss = ${logs?.loss}`)
+    }
+  })
+  console.log("finished");
+  g_model = model;
+}
+
+function getNextManual(state: GameState, mouseEvent: MouseEvent): number {
+  return Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
+}
+function getNextRandom(): number {
   return -Math.PI / 2 + (Math.random() * 2 - 1) * Math.PI / 6;
 }
-function getLinearPredictiveBullet(state: GameState, enemy: Enemy): number {
+function getNextLinear(state: GameState, enemy: Enemy): number {
   const v_bt = GAME_CONFIG.BULLET_SPEED;
   const v_em = Math.sqrt(Math.pow(enemy.vx, 2) + Math.pow(enemy.vy, 2));
   const seta2 = Math.atan2(enemy.vy, enemy.vx);
@@ -31,15 +85,20 @@ function getLinearPredictiveBullet(state: GameState, enemy: Enemy): number {
 
   return seta1;
 }
+function getNextAI(enemy: Enemy): number | null {
+  return modelPredict(enemy);
+}
 
 export const getNextBullet = (agentType: AGENT_TYPES, state: GameState, enemy: Enemy, mouseEvent: MouseEvent | null): Bullet | null => {
   let direction = null;
   if (agentType === "linear") {
-    direction = getLinearPredictiveBullet(state, enemy);
+    direction = getNextLinear(state, enemy);
   } else if (agentType === "random") {
-    direction = getNextRandomBullet();
+    direction = getNextRandom();
   } else if (agentType === "manual" && mouseEvent !== null) {
-    direction = getNextManualBullet(state, mouseEvent);
+    direction = getNextManual(state, mouseEvent);
+  } else if (agentType === "ai") {
+    direction = getNextAI(enemy);
   }
   if (direction === null) {
     return null;
