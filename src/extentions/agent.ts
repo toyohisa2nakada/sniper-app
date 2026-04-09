@@ -76,8 +76,6 @@ function getNextLinear(state: GameState, enemy: Enemy): number {
   const b = -2 * dx0 * v_em * Math.cos(seta2) - 2 * dy0 * v_em * Math.sin(seta2);
   const c = -Math.pow(dx0, 2) - Math.pow(dy0, 2);
 
-  console.log(a,b,c);
-
   const t1 = (-b + Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
   const t2 = (-b - Math.sqrt(Math.pow(b, 2) - 4 * a * c)) / (2 * a);
 

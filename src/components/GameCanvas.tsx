@@ -34,13 +34,27 @@ export default function GameCanvas() {
     const collectingTrainingDataRef = useRef<boolean>(false);
     const trainingDataRef = useRef<Bullet[]>([]);
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
-    const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() =>
-        Object.keys(localStorage).filter(key => key.startsWith(DATASET_LOCALSTORAGE_HEADER))
-            .map((key, i) => {
-                const dataset = JSON.parse(localStorage.getItem(key)!);
-                return ({ id: i, name: dataset.name })
-            })
-    );
+    const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() => {
+        const items: { id: number, name: string }[] = [];
+        Object.keys(localStorage).filter(key => key.startsWith(DATASET_LOCALSTORAGE_HEADER)).forEach(key => {
+            try {
+                const datasetStr = localStorage.getItem(key);
+                if(!datasetStr) return;
+                const dataset = JSON.parse(datasetStr);
+                const idStr = key.replace(DATASET_LOCALSTORAGE_HEADER, '');
+                let id = Number(idStr);
+                if (isNaN(id)) {
+                    id = Date.now() + Math.floor(Math.random() * 10000);
+                    localStorage.setItem(`${DATASET_LOCALSTORAGE_HEADER}${id}`, datasetStr);
+                    localStorage.removeItem(key);
+                }
+                items.push({ id, name: dataset.name || '' });
+            } catch (e) {
+                console.error(e);
+            }
+        });
+        return items.sort((a, b) => b.id - a.id);
+    });
     // console.log(datasetItemList)
     const [datasetItem, setDatasetItem] = useState<{ id: number, name: string } | null>(datasetItemList.length === 0 ? null : datasetItemList[0]);
 
@@ -63,19 +77,21 @@ export default function GameCanvas() {
     }
     function handleCreateTrainingDataChange(checked: boolean) {
         if (checked === false) {
-            const dataset = { id: (datasetItemList.at(-1)?.id ?? -1) + 1, name: "data " + datasetItemList.length };
-            const newList = [...datasetItemList, dataset];
+            const timestamp = Date.now();
+            const dataset = { id: timestamp, name: "data " + datasetItemList.length };
+            const newList = [dataset, ...datasetItemList];
             setDatasetItemList(newList);
-            setDatasetItem(newList[newList.length - 1]);
+            setDatasetItem(dataset);
 
-            localStorage.setItem(`dataset-${dataset.name}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
+            localStorage.setItem(`${DATASET_LOCALSTORAGE_HEADER}${timestamp}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
         }
         trainingDataRef.current = [];
         collectingTrainingDataRef.current = checked;
     }
     function handleStartLearning() {
         console.log(datasetItem);
-        const dataset = JSON.parse(localStorage.getItem(DATASET_LOCALSTORAGE_HEADER + (datasetItem?.name)) ?? "{}");
+        if (!datasetItem) return;
+        const dataset = JSON.parse(localStorage.getItem(DATASET_LOCALSTORAGE_HEADER + datasetItem.id) ?? "{}");
         if (Object.keys(dataset).length > 0) {
             modelFit(dataset.data);
         }
@@ -93,6 +109,7 @@ export default function GameCanvas() {
                 setDatasetItem(newList[newIndex]);
             }
         }
+        localStorage.removeItem(`${DATASET_LOCALSTORAGE_HEADER}${id}`);
     }
 
     const addTrainingData = (bullet: Bullet) => {
@@ -244,6 +261,18 @@ export default function GameCanvas() {
                                                 const updated = { ...datasetItem, name: newName };
                                                 setDatasetItem(updated);
                                                 setDatasetItemList(prev => prev.map(item => item.id === datasetItem.id ? updated : item));
+                                                
+                                                const key = `${DATASET_LOCALSTORAGE_HEADER}${datasetItem.id}`;
+                                                const existingDataStr = localStorage.getItem(key);
+                                                if (existingDataStr) {
+                                                    try {
+                                                        const existingData = JSON.parse(existingDataStr);
+                                                        existingData.name = newName;
+                                                        localStorage.setItem(key, JSON.stringify(existingData));
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                    }
+                                                }
                                             }
                                         }}
                                         className="bg-slate-700 text-white px-2 py-1 pr-8 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
