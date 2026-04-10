@@ -12,6 +12,7 @@ export const GAME_CONFIG = {
     BULLET_SPEED: 0.3,
     BULLET_SIZE: 3,
     BULLET_COLOR: 'red',
+    BULLET_INTERVAL_MS: 100,
 
     ENEMY_INIT_X: 0,
     ENEMY_INIT_Y: 150,

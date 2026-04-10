@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-export const useGameLoop = (callback: (dt: number) => void) => {
+export const useGameLoop = (callback: (dt: number, now: number) => void) => {
     const requestRef = useRef<number>(0);
     const previousTimeRef = useRef<number>(0);
 
@@ -19,7 +19,7 @@ export const useGameLoop = (callback: (dt: number) => void) => {
             // 1秒以上のブランク（タブ移動など）があった場合は計算をスキップ
             // これにより、復帰時に敵が猛スピードで動くのを防ぐ
             if (deltaTime < 1000) {
-                callbackRef.current(deltaTime);
+                callbackRef.current(deltaTime, time);
             }
         }
 

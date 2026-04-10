@@ -22,7 +22,7 @@ export function modelPredict(enemy: Enemy): number {
 
 export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch: number, totalEpochs: number, logs: tf.Logs) => void) {
   console.log(trainingData)
-  const totalEpochs = 1500;
+  const totalEpochs = 1000;
   const learningRate = 0.005;
   const model = tf.sequential();
   model.add(tf.layers.dense({
@@ -64,8 +64,8 @@ export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch
   g_model = model;
 }
 
-function getNextManual(state: GameState, mouseEvent: MouseEvent): number {
-  return Math.atan2(mouseEvent.offsetY - state.player.y, mouseEvent.offsetX - state.player.x);
+function getNextManual(state: GameState, targetPos: { x: number, y: number }): number {
+  return Math.atan2(targetPos.y - state.player.y, targetPos.x - state.player.x);
 }
 function getNextRandom(): number {
   return -Math.PI / 2 + (Math.random() * 2 - 1) * Math.PI / 6;
@@ -96,14 +96,14 @@ function getNextAI(enemy: Enemy): number | null {
   return modelPredict(enemy);
 }
 
-export const getNextBullet = (agentType: AGENT_TYPES, state: GameState, enemy: Enemy, mouseEvent: MouseEvent | null): Bullet | null => {
+export const getNextBullet = (agentType: AGENT_TYPES, state: GameState, enemy: Enemy, targetPos: { x: number, y: number }): Bullet | null => {
   let direction = null;
   if (agentType === "linear") {
     direction = getNextLinear(state, enemy);
   } else if (agentType === "random") {
     direction = getNextRandom();
-  } else if (agentType === "manual" && mouseEvent !== null) {
-    direction = getNextManual(state, mouseEvent);
+  } else if (agentType === "manual" && targetPos !== null) {
+    direction = getNextManual(state, targetPos);
   } else if (agentType === "ai") {
     direction = getNextAI(enemy);
   }

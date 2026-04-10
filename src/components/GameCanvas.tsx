@@ -39,6 +39,9 @@ export default function GameCanvas() {
     const collectingTrainingDataRef = useRef<boolean>(false);
     const trainingDataRef = useRef<Bullet[]>([]);
     const enemyColorTimerIdRef = useRef<number | null>(null);
+    const pointerPosRef = useRef({ x: 0, y: 0 });
+    const isFiringRef = useRef<boolean>(false);
+    const lastFiredTimeRef = useRef<number>(0);
 
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
     const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() => {
@@ -64,8 +67,8 @@ export default function GameCanvas() {
     });
     const [datasetItem, setDatasetItem] = useState<{ id: number, name: string } | null>(datasetItemList.length === 0 ? null : datasetItemList[0]);
 
-    useGameLoop((dt) => {
-        updateGame(dt);
+    useGameLoop((dt, now) => {
+        updateGame(dt, now);
         drawGame();
     });
 
@@ -147,8 +150,21 @@ export default function GameCanvas() {
         }
         return;
     }
+    const emit = (targetPos: { x: number, y: number }) => {
+        const targetEnemy = gameState.current.enemies[0];
+        if (targetEnemy === undefined) {
+            return;
+        }
+        const bullet = getNextBullet(agentType, gameState.current, targetEnemy, targetPos);
+        if (bullet) {
+            bullet.id = gameState.current.remainingBullets;
+            gameState.current.bullets.push(bullet);
+            gameState.current.remainingBullets -= 1;
+            onGameStateChange(gameState.current);
+        }
+    }
 
-    const updateGame = (dt: number) => {
+    const updateGame = (dt: number, now: number) => {
         gameState.current.enemies.forEach(enemy => {
             enemy.x += enemy.vx * dt;
             enemy.y += enemy.vy * dt;
@@ -194,6 +210,12 @@ export default function GameCanvas() {
             }
             return true;
         });
+
+        if (isFiringRef.current && now > lastFiredTimeRef.current + GAME_CONFIG.BULLET_INTERVAL_MS) {
+            console.log("emit " + now);
+            emit(pointerPosRef.current);
+            lastFiredTimeRef.current = now;
+        }
     };
     const drawGame = () => {
         const canvas = canvasRef.current;
@@ -228,36 +250,19 @@ export default function GameCanvas() {
     };
 
     useEffect(() => {
-        const emit = (e: MouseEvent | null) => {
-            const targetEnemy = gameState.current.enemies[0];
-            if (targetEnemy === undefined) {
-                return;
-            }
-            const bullet = getNextBullet(agentType, gameState.current, targetEnemy, e);
-            if (bullet) {
-                bullet.id = gameState.current.remainingBullets;
-                gameState.current.bullets.push(bullet);
-                gameState.current.remainingBullets -= 1;
-                onGameStateChange(gameState.current);
-            }
-        }
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.code === 'Space') {
-                emit(null);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-
-        const handleMouseClick = (e: MouseEvent) => {
-            emit(e);
-        }
         const canvasRef_bk = canvasRef.current;
-        canvasRef_bk?.addEventListener('click', handleMouseClick);
+        const handlePointerDown = () => isFiringRef.current = true;
+        const handlePointerUp = () => isFiringRef.current = false;
+        const handlePointerMove = (e: MouseEvent) => pointerPosRef.current = { x: e.offsetX, y: e.offsetY };
+        canvasRef_bk?.addEventListener('pointerdown', handlePointerDown);
+        canvasRef_bk?.addEventListener('pointerup', handlePointerUp);
+        canvasRef_bk?.addEventListener('pointermove', handlePointerMove);
 
         onGameStateChange(gameState.current);
         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            canvasRef_bk?.removeEventListener('click', handleMouseClick);
+            canvasRef_bk?.removeEventListener('pointerdown', handlePointerDown);
+            canvasRef_bk?.removeEventListener('pointerup', handlePointerUp);
+            canvasRef_bk?.removeEventListener('pointermove', handlePointerMove);
         }
     }, [agentType]);
 
