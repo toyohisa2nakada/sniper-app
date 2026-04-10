@@ -28,18 +28,21 @@ export default function GameCanvas() {
         }],
         bullets: [],
     });
-    const hitCountRef = useRef<HTMLSpanElement>(null);
-    const remainingBulletsRef = useRef<HTMLSpanElement>(null);
+    const hitCountSpanRef = useRef<HTMLSpanElement>(null);
+    const remainingBulletsSpanRef = useRef<HTMLSpanElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const trainingDataCountDivRef = useRef<HTMLDivElement>(null);
+
     const collectingTrainingDataRef = useRef<boolean>(false);
     const trainingDataRef = useRef<Bullet[]>([]);
+
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
     const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() => {
         const items: { id: number, name: string }[] = [];
         Object.keys(localStorage).filter(key => key.startsWith(DATASET_LOCALSTORAGE_HEADER)).forEach(key => {
             try {
                 const datasetStr = localStorage.getItem(key);
-                if(!datasetStr) return;
+                if (!datasetStr) return;
                 const dataset = JSON.parse(datasetStr);
                 const idStr = key.replace(DATASET_LOCALSTORAGE_HEADER, '');
                 let id = Number(idStr);
@@ -55,7 +58,6 @@ export default function GameCanvas() {
         });
         return items.sort((a, b) => b.id - a.id);
     });
-    // console.log(datasetItemList)
     const [datasetItem, setDatasetItem] = useState<{ id: number, name: string } | null>(datasetItemList.length === 0 ? null : datasetItemList[0]);
 
     useGameLoop((dt) => {
@@ -64,11 +66,11 @@ export default function GameCanvas() {
     });
 
     function onGameStateChange(state: GameState) {
-        if (!hitCountRef.current || !remainingBulletsRef.current) {
+        if (!hitCountSpanRef.current || !remainingBulletsSpanRef.current) {
             return;
         }
-        hitCountRef.current.textContent = state.hitCount.toString();
-        remainingBulletsRef.current.textContent = state.remainingBullets.toString();
+        hitCountSpanRef.current.textContent = state.hitCount.toString();
+        remainingBulletsSpanRef.current.textContent = state.remainingBullets.toString();
         return;
     }
 
@@ -77,13 +79,22 @@ export default function GameCanvas() {
     }
     function handleCreateTrainingDataChange(checked: boolean) {
         if (checked === false) {
-            const timestamp = Date.now();
-            const dataset = { id: timestamp, name: "data " + datasetItemList.length };
+            const date = new Date();
+            const dateFormatted = date.toLocaleString('ja-JP', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const dataset = { id: date.getTime(), name: `${dateFormatted} (${trainingDataRef.current.length})` };
             const newList = [dataset, ...datasetItemList];
             setDatasetItemList(newList);
             setDatasetItem(dataset);
+            if (trainingDataCountDivRef.current) trainingDataCountDivRef.current.textContent = "";
 
-            localStorage.setItem(`${DATASET_LOCALSTORAGE_HEADER}${timestamp}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
+            localStorage.setItem(`${DATASET_LOCALSTORAGE_HEADER}${date.getTime()}`, JSON.stringify({ name: dataset.name, data: trainingDataRef.current }));
         }
         trainingDataRef.current = [];
         collectingTrainingDataRef.current = checked;
@@ -113,7 +124,10 @@ export default function GameCanvas() {
     }
 
     const addTrainingData = (bullet: Bullet) => {
-        trainingDataRef.current.push(bullet)
+        trainingDataRef.current.push(bullet);
+        if (trainingDataCountDivRef.current) {
+            trainingDataCountDivRef.current.textContent = trainingDataRef.current.length.toString();
+        }
         return;
     }
 
@@ -248,11 +262,12 @@ export default function GameCanvas() {
                             onChange={(e) => handleCreateTrainingDataChange(e.target.checked)}
                         />
                         <label htmlFor="create-trainingData">学習データ作成</label>
+                        <div id="trainingData-count" ref={trainingDataCountDivRef}></div>
                     </div>
                     <div className="flex items-center gap-2 bg-inherit">
                         <Combobox value={datasetItem} onChange={setDatasetItem}>
-                            <div className="relative">
-                                <div className="relative flex items-center">
+                            <div className="relative w-42">
+                                <div className="relative flex items-center w-full">
                                     <ComboboxInput
                                         displayValue={(d: typeof datasetItem) => d?.name ?? ''}
                                         onChange={(e) => {
@@ -261,7 +276,7 @@ export default function GameCanvas() {
                                                 const updated = { ...datasetItem, name: newName };
                                                 setDatasetItem(updated);
                                                 setDatasetItemList(prev => prev.map(item => item.id === datasetItem.id ? updated : item));
-                                                
+
                                                 const key = `${DATASET_LOCALSTORAGE_HEADER}${datasetItem.id}`;
                                                 const existingDataStr = localStorage.getItem(key);
                                                 if (existingDataStr) {
@@ -275,7 +290,7 @@ export default function GameCanvas() {
                                                 }
                                             }
                                         }}
-                                        className="bg-slate-700 text-white px-2 py-1 pr-8 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="flex-1 bg-slate-700 text-white px-2 py-1 pr-2 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
                                         placeholder="Select dataset"
                                     />
                                     <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -306,8 +321,8 @@ export default function GameCanvas() {
                         <button onClick={handleStartLearning}>学習</button>
                     </div>
                 </div>
-                <div>HITS: <span ref={hitCountRef} className="text-yellow-400">0</span></div>
-                <div>BULLETS: <span ref={remainingBulletsRef} className="text-red-400">10</span></div>
+                <div>HITS: <span ref={hitCountSpanRef} className="text-yellow-400">0</span></div>
+                <div className="hidden">BULLETS: <span ref={remainingBulletsSpanRef} className="text-red-400">10</span></div>
             </header>
             <canvas
                 ref={canvasRef}
