@@ -227,7 +227,7 @@ export default function GameCanvas() {
     return (
         <main className="flex flex-col items-center justify-center p-4">
             <header className="h-12 bg-slate-800 text-white flex items-center justify-between px-6 border-b border-slate-700 gap-4 font-mono text-xs">
-                <div className="flex items-center gap-0 bg-inherit">
+                <div className="flex flex-col items-center bg-inherit">
                     <label htmlFor="agent-select">Player</label>
                     <select
                         id="agent-select"
