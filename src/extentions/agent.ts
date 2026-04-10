@@ -20,8 +20,10 @@ export function modelPredict(enemy: Enemy): number {
   return (g_model.predict(xs) as tf.Tensor).dataSync()[0] * Math.PI;
 }
 
-export async function modelFit(trainingData: Bullet[]) {
+export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch: number, totalEpochs: number, logs: tf.Logs) => void) {
   console.log(trainingData)
+  const totalEpochs = 1500;
+  const learningRate = 0.005;
   const model = tf.sequential();
   model.add(tf.layers.dense({
     inputShape: [4],
@@ -36,7 +38,7 @@ export async function modelFit(trainingData: Bullet[]) {
     units: 1
   }));
   model.compile({
-    optimizer: tf.train.adam(0.005),
+    optimizer: tf.train.adam(learningRate),
     loss: tf.losses.meanSquaredError,
   })
 
@@ -50,11 +52,14 @@ export async function modelFit(trainingData: Bullet[]) {
     data.direction / Math.PI
   ])))
   await model.fit(xs, ys, {
-    epochs: 1500,
+    epochs: totalEpochs,
     callbacks: {
-      onEpochEnd: (epoch, logs) => console.log(`Epoch ${epoch}: Loss = ${logs?.loss}`)
+      onEpochEnd: (epoch, logs) => {
+        onEpochEnd(epoch, totalEpochs, logs ?? {});
+      }
     }
   })
+  onEpochEnd(totalEpochs, totalEpochs, {});
   console.log("finished");
   g_model = model;
 }

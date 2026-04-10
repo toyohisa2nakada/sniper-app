@@ -4,6 +4,7 @@ import { useGameLoop } from '../hooks/useGameLoop';
 import type { GameState, Bullet } from '../models/game';
 import { GAME_CONFIG } from '../models/game';
 import { getNextBullet, modelFit, AGENT_TYPES_ARRAY, type AGENT_TYPES } from '../extentions/agent';
+import type { Logs } from '@tensorflow/tfjs';
 
 const DATASET_LOCALSTORAGE_HEADER = 'dataset-';
 
@@ -32,9 +33,12 @@ export default function GameCanvas() {
     const remainingBulletsSpanRef = useRef<HTMLSpanElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const trainingDataCountDivRef = useRef<HTMLDivElement>(null);
+    const mseSpanRef = useRef<HTMLSpanElement>(null);
+    const progressDivRef = useRef<HTMLDivElement>(null);
 
     const collectingTrainingDataRef = useRef<boolean>(false);
     const trainingDataRef = useRef<Bullet[]>([]);
+    const enemyColorTimerIdRef = useRef<number | null>(null);
 
     const [agentType, setAgentType] = useState<AGENT_TYPES>("manual");
     const [datasetItemList, setDatasetItemList] = useState<{ id: number, name: string }[]>(() => {
@@ -104,7 +108,20 @@ export default function GameCanvas() {
         if (!datasetItem) return;
         const dataset = JSON.parse(localStorage.getItem(DATASET_LOCALSTORAGE_HEADER + datasetItem.id) ?? "{}");
         if (Object.keys(dataset).length > 0) {
-            modelFit(dataset.data);
+            modelFit(dataset.data, (currentEpoch: number, totalEpochs: number, logs: Logs) => {
+                if (!mseSpanRef.current) return;
+                mseSpanRef.current.textContent = logs?.loss?.toFixed(4) ?? "0.0000";
+                // console.log(currentEpoch, totalEpochs, learningRate, logs);
+
+                if (progressDivRef.current) {
+                    progressDivRef.current.style.width = `${(currentEpoch / totalEpochs) * 100}%`;
+                    if (currentEpoch === totalEpochs) {
+                        setTimeout(() => {
+                            progressDivRef.current!.style.width = "0%";
+                        }, 1000);
+                    }
+                }
+            });
         }
     }
     function handleDeleteDataset(e: React.MouseEvent, id: number) {
@@ -163,7 +180,13 @@ export default function GameCanvas() {
             if (hitEnemy) {
                 gameState.current.hitCount += 1;
                 onGameStateChange(gameState.current);
-                hitEnemy.color = 'red';
+                hitEnemy.color = GAME_CONFIG.ENEMY_HIT_COLOR;
+                if (enemyColorTimerIdRef.current) {
+                    clearTimeout(enemyColorTimerIdRef.current);
+                }
+                enemyColorTimerIdRef.current = setTimeout(() => {
+                    hitEnemy.color = GAME_CONFIG.ENEMY_INIT_COLOR;
+                }, GAME_CONFIG.ENEMY_HIT_COLOR_DURATION);
                 if (collectingTrainingDataRef.current) {
                     addTrainingData(bullet);
                 }
@@ -253,7 +276,8 @@ export default function GameCanvas() {
                         {AGENT_TYPES_ARRAY.map((t: string, i: number) => (<option value={t} key={i}>{t}</option>))}
                     </select>
                 </div>
-                <div className="flex flex-row gap-1 p-1 border bg-inherit">
+                <div className="relative flex flex-row gap-1 p-1 border bg-inherit">
+                    <div className="absolute z-10 inset-y-0 left-0 bg-blue-600/80" style={{ width: '0%' }} ref={progressDivRef}></div>
                     <div className="flex items-center gap-0 bg-inherit">
                         <input
                             id="create-trainingData"
@@ -319,6 +343,7 @@ export default function GameCanvas() {
                             </div>
                         </Combobox>
                         <button onClick={handleStartLearning}>学習</button>
+                        <div>mse<span ref={mseSpanRef}>0.0000</span></div>
                     </div>
                 </div>
                 <div>HITS: <span ref={hitCountSpanRef} className="text-yellow-400">0</span></div>
@@ -330,6 +355,6 @@ export default function GameCanvas() {
                 height={GAME_CONFIG.SCREEN_HEIGHT}
                 className="bg-black w-full max-w-[360px] aspect-[9/16] shadow-2xl touch-none border border-slate-700"
             />
-        </main>
+        </main >
     );
 }

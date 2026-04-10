@@ -19,6 +19,8 @@ export const GAME_CONFIG = {
     ENEMY_INIT_VY: 0,
     ENEMY_INIT_SIZE: 10,
     ENEMY_INIT_COLOR: 'green',
+    ENEMY_HIT_COLOR: 'red',
+    ENEMY_HIT_COLOR_DURATION: 800,
 }
 
 export type Player = {
