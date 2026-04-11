@@ -113,7 +113,9 @@ export default function GameCanvas() {
         if (Object.keys(dataset).length > 0) {
             modelFit(dataset.data, (currentEpoch: number, totalEpochs: number, logs: Logs) => {
                 if (!mseSpanRef.current) return;
-                mseSpanRef.current.textContent = logs?.loss?.toFixed(4) ?? "0.0000";
+                if (logs?.loss) {
+                    mseSpanRef.current.textContent = logs.loss.toFixed(4);
+                }
                 // console.log(currentEpoch, totalEpochs, learningRate, logs);
 
                 if (progressDivRef.current) {
@@ -212,7 +214,6 @@ export default function GameCanvas() {
         });
 
         if (isFiringRef.current && now > lastFiredTimeRef.current + GAME_CONFIG.BULLET_INTERVAL_MS) {
-            console.log("emit " + now);
             emit(pointerPosRef.current);
             lastFiredTimeRef.current = now;
         }

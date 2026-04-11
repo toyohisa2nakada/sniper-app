@@ -22,7 +22,7 @@ export function modelPredict(enemy: Enemy): number {
 
 export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch: number, totalEpochs: number, logs: tf.Logs) => void) {
   console.log(trainingData)
-  const totalEpochs = 1000;
+  const totalEpochs = 1500;
   const learningRate = 0.005;
   const model = tf.sequential();
   model.add(tf.layers.dense({
@@ -31,16 +31,13 @@ export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch
     activation: 'tanh'
   }));
   model.add(tf.layers.dense({
-    units: 8,
-    activation: 'tanh'
-  }));
-  model.add(tf.layers.dense({
-    units: 1
+    units: 1,
   }));
   model.compile({
     optimizer: tf.train.adam(learningRate),
     loss: tf.losses.meanSquaredError,
-  })
+  });
+  model.summary();
 
   const xs = tf.tensor2d(trainingData.map(data => ([
     data.enemySnapshot.x / GAME_CONFIG.SCREEN_WIDTH,
