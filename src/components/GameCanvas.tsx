@@ -123,6 +123,7 @@ export default function GameCanvas() {
                     if (currentEpoch === totalEpochs) {
                         setTimeout(() => {
                             progressDivRef.current!.style.width = "0%";
+                            setAgentType("ai");
                         }, 1000);
                     }
                 }
