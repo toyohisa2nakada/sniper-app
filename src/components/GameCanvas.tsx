@@ -29,7 +29,7 @@ export default function GameCanvas() {
         }],
         bullets: [],
     });
-    const hitCountSpanRef = useRef<HTMLSpanElement>(null);
+    const hitCountDivRef = useRef<HTMLDivElement>(null);
     const remainingBulletsSpanRef = useRef<HTMLSpanElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const trainingDataCountDivRef = useRef<HTMLDivElement>(null);
@@ -73,10 +73,10 @@ export default function GameCanvas() {
     });
 
     function onGameStateChange(state: GameState) {
-        if (!hitCountSpanRef.current || !remainingBulletsSpanRef.current) {
+        if (!hitCountDivRef.current || !remainingBulletsSpanRef.current) {
             return;
         }
-        hitCountSpanRef.current.textContent = state.hitCount.toString();
+        hitCountDivRef.current.textContent = state.hitCount.toString();
         remainingBulletsSpanRef.current.textContent = state.remainingBullets.toString();
         return;
     }
@@ -276,84 +276,91 @@ export default function GameCanvas() {
                     <select
                         id="agent-select"
                         name="agentType"
-                        className="bg-inherit"
+                        className="border border-gray-600 bg-inherit"
                         value={agentType}
                         onChange={handleAgentTypeChange}
                     >
                         {AGENT_TYPES_ARRAY.map((t: string, i: number) => (<option value={t} key={i}>{t}</option>))}
                     </select>
                 </div>
-                <div className="relative flex flex-row gap-1 p-1 border bg-inherit">
+                <div className="relative flex flex-row gap-2 p-1 border border-gray-400 bg-inherit">
                     <div className="absolute z-10 inset-y-0 left-0 bg-blue-600/80" style={{ width: '0%' }} ref={progressDivRef}></div>
-                    <div className="flex items-center gap-0 bg-inherit">
-                        <input
-                            id="create-trainingData"
-                            type="checkbox"
-                            className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            onChange={(e) => handleCreateTrainingDataChange(e.target.checked)}
-                        />
-                        <label htmlFor="create-trainingData">学習データ作成</label>
-                        <div id="trainingData-count" ref={trainingDataCountDivRef}></div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-inherit">
-                        <Combobox value={datasetItem} onChange={setDatasetItem}>
-                            <div className="relative w-42">
-                                <div className="relative flex items-center w-full">
-                                    <ComboboxInput
-                                        displayValue={(d: typeof datasetItem) => d?.name ?? ''}
-                                        onChange={(e) => {
-                                            const newName = e.target.value;
-                                            if (datasetItem) {
-                                                const updated = { ...datasetItem, name: newName };
-                                                setDatasetItem(updated);
-                                                setDatasetItemList(prev => prev.map(item => item.id === datasetItem.id ? updated : item));
+                    <div>
+                        <div className="flex items-center gap-0 bg-inherit">
+                            <input
+                                id="create-trainingData"
+                                type="checkbox"
+                                className="px-3 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                onChange={(e) => handleCreateTrainingDataChange(e.target.checked)}
+                            />
+                            <label htmlFor="create-trainingData">学習データ作成</label>
+                            <div id="trainingData-count" ref={trainingDataCountDivRef}></div>
+                        </div>
+                        <div className="flex items-center gap-2 bg-inherit">
+                            <Combobox value={datasetItem} onChange={setDatasetItem}>
+                                <div className="relative w-42">
+                                    <div className="relative flex items-center w-full">
+                                        <ComboboxInput
+                                            displayValue={(d: typeof datasetItem) => d?.name ?? ''}
+                                            onChange={(e) => {
+                                                const newName = e.target.value;
+                                                if (datasetItem) {
+                                                    const updated = { ...datasetItem, name: newName };
+                                                    setDatasetItem(updated);
+                                                    setDatasetItemList(prev => prev.map(item => item.id === datasetItem.id ? updated : item));
 
-                                                const key = `${DATASET_LOCALSTORAGE_HEADER}${datasetItem.id}`;
-                                                const existingDataStr = localStorage.getItem(key);
-                                                if (existingDataStr) {
-                                                    try {
-                                                        const existingData = JSON.parse(existingDataStr);
-                                                        existingData.name = newName;
-                                                        localStorage.setItem(key, JSON.stringify(existingData));
-                                                    } catch (e) {
-                                                        console.error(e);
+                                                    const key = `${DATASET_LOCALSTORAGE_HEADER}${datasetItem.id}`;
+                                                    const existingDataStr = localStorage.getItem(key);
+                                                    if (existingDataStr) {
+                                                        try {
+                                                            const existingData = JSON.parse(existingDataStr);
+                                                            existingData.name = newName;
+                                                            localStorage.setItem(key, JSON.stringify(existingData));
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                        }
                                                     }
                                                 }
-                                            }
-                                        }}
-                                        className="flex-1 bg-slate-700 text-white px-2 py-1 pr-2 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Select dataset"
-                                    />
-                                    <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
-                                        <span className="text-gray-400 text-xs">▼</span>
-                                    </ComboboxButton>
+                                            }}
+                                            className="flex-1 bg-slate-700 text-white px-2 py-1 pr-2 rounded w-32 outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Select dataset"
+                                        />
+                                        <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+                                            <span className="text-gray-400 text-xs">▼</span>
+                                        </ComboboxButton>
+                                    </div>
+                                    <ComboboxOptions className="absolute right-0 w-max min-w-full mt-1 max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-black z-50">
+                                        {datasetItemList.map((data) => (
+                                            <ComboboxOption key={data.id} value={data}
+                                                className={({ focus }) => `relative cursor-default select-none py-2 pl-3 pr-9 flex justify-between ${focus ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
+                                            >
+                                                <span>{data.name}</span>
+                                                <button
+                                                    onMouseDown={(e) => {
+                                                        e.stopPropagation();
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleDeleteDataset(e, data.id);
+                                                    }}
+                                                    className="text-gray-200 hover:text-red-700 z-10 px-2 py-1 rounded"
+                                                >削除</button>
+                                            </ComboboxOption>
+                                        ))}
+                                    </ComboboxOptions>
                                 </div>
-                                <ComboboxOptions className="absolute right-0 w-max min-w-full mt-1 max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-black z-50">
-                                    {datasetItemList.map((data) => (
-                                        <ComboboxOption key={data.id} value={data}
-                                            className={({ focus }) => `relative cursor-default select-none py-2 pl-3 pr-9 flex justify-between ${focus ? 'bg-blue-600 text-white' : 'text-gray-900'}`}
-                                        >
-                                            <span>{data.name}</span>
-                                            <button
-                                                onMouseDown={(e) => {
-                                                    e.stopPropagation();
-                                                }}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    handleDeleteDataset(e, data.id);
-                                                }}
-                                                className="text-gray-200 hover:text-red-700 z-10 px-2 py-1 rounded"
-                                            >削除</button>
-                                        </ComboboxOption>
-                                    ))}
-                                </ComboboxOptions>
-                            </div>
-                        </Combobox>
-                        <button onClick={handleStartLearning}>学習</button>
+                            </Combobox>
+                        </div>
+                    </div>
+                    <div>
+                        <button onClick={handleStartLearning} className="bg-blue-900 px-2 py-0.5 border border-gray-600">学習</button>
                         <div>mse<span ref={mseSpanRef}>0.0000</span></div>
                     </div>
                 </div>
-                <div>HITS: <span ref={hitCountSpanRef} className="text-yellow-400">0</span></div>
+                <div className="flex flex-col">
+                    <div>HITS</div>
+                    <div ref={hitCountDivRef} className="text-yellow-400">0</div>
+                </div>
                 <div className="hidden">BULLETS: <span ref={remainingBulletsSpanRef} className="text-red-400">10</span></div>
             </header>
             <canvas
