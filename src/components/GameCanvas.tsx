@@ -84,6 +84,9 @@ export default function GameCanvas() {
     function handleAgentTypeChange(event: React.ChangeEvent<HTMLSelectElement>) {
         setAgentType(event.target.value as AGENT_TYPES);
     }
+    function handleAutoEmitChange(checked: boolean) {
+        isFiringRef.current = checked;
+    }
     function handleCreateTrainingDataChange(checked: boolean) {
         if (checked === false) {
             const date = new Date();
@@ -273,15 +276,25 @@ export default function GameCanvas() {
             <header className="h-12 bg-slate-800 text-white flex items-center justify-between px-6 border-b border-slate-700 gap-4 font-mono text-xs">
                 <div className="flex flex-col items-center bg-inherit">
                     <label htmlFor="agent-select">Player</label>
-                    <select
-                        id="agent-select"
-                        name="agentType"
-                        className="border border-gray-600 bg-inherit"
-                        value={agentType}
-                        onChange={handleAgentTypeChange}
-                    >
-                        {AGENT_TYPES_ARRAY.map((t: string, i: number) => (<option value={t} key={i}>{t}</option>))}
-                    </select>
+                    <div className="flex flex-row gap-1 bg-inherit">
+                        <select
+                            id="agent-select"
+                            name="agentType"
+                            className="border border-gray-600 bg-inherit"
+                            value={agentType}
+                            onChange={handleAgentTypeChange}
+                        >
+                            {AGENT_TYPES_ARRAY.map((t: string, i: number) => (<option value={t} key={i}>{t}</option>))}
+                        </select>
+                        <div className="flex">
+                            <input
+                                id="auto-emit"
+                                type="checkbox"
+                                onChange={e => handleAutoEmitChange(e.target.checked)}
+                            />
+                            <label htmlFor="auto-emit">auto</label>
+                        </div>
+                    </div>
                 </div>
                 <div className="relative flex flex-row gap-2 p-1 border border-gray-400 bg-inherit">
                     <div className="absolute z-10 inset-y-0 left-0 bg-blue-600/80" style={{ width: '0%' }} ref={progressDivRef}></div>
@@ -294,7 +307,7 @@ export default function GameCanvas() {
                                 onChange={(e) => handleCreateTrainingDataChange(e.target.checked)}
                             />
                             <label htmlFor="create-trainingData">学習データ作成</label>
-                            <div id="trainingData-count" ref={trainingDataCountDivRef}></div>
+                            <div id="trainingData-count" ref={trainingDataCountDivRef} className="ml-1"></div>
                         </div>
                         <div className="flex items-center gap-2 bg-inherit">
                             <Combobox value={datasetItem} onChange={setDatasetItem}>
