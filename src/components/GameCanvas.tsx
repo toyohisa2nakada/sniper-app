@@ -217,7 +217,8 @@ export default function GameCanvas() {
             return true;
         });
 
-        if (isFiringRef.current && now > lastFiredTimeRef.current + GAME_CONFIG.BULLET_INTERVAL_MS) {
+        if (isFiringRef.current &&
+            now > lastFiredTimeRef.current + (agentType === "manual" ? GAME_CONFIG.BULLET_INTERVAL_MANUAL_MS : GAME_CONFIG.BULLET_INTERVAL_MS)) {
             emit(pointerPosRef.current);
             lastFiredTimeRef.current = now;
         }
