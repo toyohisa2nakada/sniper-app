@@ -22,12 +22,13 @@ export function modelPredict(enemy: Enemy): number {
 
 export async function modelFit(trainingData: Bullet[], onEpochEnd: (currentEpoch: number, totalEpochs: number, logs: tf.Logs) => void) {
   console.log(trainingData)
-  const totalEpochs = 1500;
-  const learningRate = 0.005;
+  const totalEpochs = 5000;
+  const learningRate = 0.002;
   const model = tf.sequential();
   model.add(tf.layers.dense({
     inputShape: [4],
     units: 8,
+    useBias: true,
     activation: 'tanh'
   }));
   model.add(tf.layers.dense({
